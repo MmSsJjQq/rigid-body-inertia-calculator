@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>刚体转动惯量计算器（AI+物理）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 p-5">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">刚体绕定轴转动惯量计算器</h1>
+
+        <!-- 参数配置区 -->
+        <div class="mb-6">
+            <label class="block mb-2 font-medium" for="rigidCount">刚体个数：</label>
+            <input type="number" id="rigidCount" min="1" value="2" class="w-full p-2 border border-gray-300 rounded">
+            <button onclick="updateRigidInputs()" class="mt-2 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">确认个数</button>
+        </div>
+
+        <!-- 刚体参数输入区 -->
+        <div id="rigidParams" class="mb-6 space-y-3"></div>
+
+        <!-- 计算结果区 -->
+        <div class="mb-6 p-3 bg-gray-50 rounded">
+            <p class="font-medium">总转动惯量：<span id="result" class="text-red-600 font-bold">0</span> kg·m²</p >
+        </div>
+
+        <!-- 可视化区 -->
+        <div class="h-80">
+            <canvas id="rigidChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 初始化刚体参数输入框
+        function updateRigidInputs() {
+            const count = parseInt(document.getElementById('rigidCount').value);
+            const container = document.getElementById('rigidParams');
+            container.innerHTML = '';
+
+            for (let i = 0; i < count; i++) {
+                const div = document.createElement('div');
+                div.className = "flex gap-3";
+                div.innerHTML = `
+                    <div class="flex-1">
+                        <label class="block mb-1 font-medium">刚体${i+1}质量(kg)：</label>
+                        <input type="number" min="0.1" value="1" class="w-full p-2 border border-gray-300 rounded rigid-mass">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block mb-1 font-medium">到定轴距离(m)：</label>
+                        <input type="number" min="0.1" value="1" class="w-full p-2 border border-gray-300 rounded rigid-distance">
+                    </div>
+                `;
+                container.appendChild(div);
+            }
+
+            // 绑定参数变化事件
+            document.querySelectorAll('.rigid-mass, .rigid-distance').forEach(input => {
+                input.addEventListener('input', calculateAndVisualize);
+            });
+
+            calculateAndVisualize();
+        }
+
+        // 计算转动惯量并可视化
+        function calculateAndVisualize() {
+            const masses = Array.from(document.querySelectorAll('.rigid-mass')).map(input => parseFloat(input.value) || 0);
+            const distances = Array.from(document.querySelectorAll('.rigid-distance')).map(input => parseFloat(input.value) || 0);
+            
+            // 计算总转动惯量
+            let totalJ = 0;
+            const jList = [];
+            for (let i = 0; i < masses.length; i++) {
+                const j = masses[i] * Math.pow(distances[i], 2);
+                jList.push(j);
+                totalJ += j;
+            }
+            document.getElementById('result').textContent = totalJ.toFixed(2);
+
+            // 可视化（Chart.js）
+            const ctx = document.getElementById('rigidChart').getContext('2d');
+            if (window.rigidChart) window.rigidChart.destroy();
+            
+            window.rigidChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: masses.map((_, i) => `刚体${i+1}`),
+                    datasets: [
+                        {
+                            label: '单个刚体转动惯量(kg·m²)',
+                            data: jList,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: '转动惯量(kg·m²)' } }
+                    },
+                    plugins: {
+                        title: { display: true, text: '各刚体转动惯量分布', font: { size: 16 } }
+                    }
+                }
+            });
+        }
+
+        // 初始化
+        updateRigidInputs();
+    </script>
+</body>
+</html>
